@@ -27,3 +27,76 @@ angular.module('postman-tegar',[])
 		})
 	};
 })
+
+//setting up apis
+.controller('api', ['$scope', '$q', function($scope, $q){
+
+	//get APIS List
+	$scope.getApisList=function(){
+		//load json file
+		var deferred = $q.defer();
+		$.getJSON("json/GITHUB.postman_collection.json", function(json) {
+			var apis_list={};
+			$.each( json.item, function(key, val) {
+				apis_list[val.name]=val;
+			});
+			
+			deferred.resolve(apis_list);			
+		});	
+		return deferred.promise;
+	}
+
+	//call spesific api
+	$scope.getApi=function(api){
+		//load an API
+		var deferred = $q.defer();
+		var xhttp = new XMLHttpRequest();
+	    xhttp.open(api.request.method, api.request.url, true);
+	    xhttp.setRequestHeader("Content-type", "application/json");
+	    xhttp.send();
+		xhttp.onreadystatechange = function() {
+		    var api = JSON.parse(xhttp.responseText);
+		    deferred.resolve(api);
+		}
+		return deferred.promise;
+	}
+
+	$scope.apis={};
+	$scope.getApisList().then(function (apis_list) {
+		$scope.apis_list=apis_list;
+
+		//running Postman APIS
+		$scope.getApi($scope.apis_list["GET USER DETAILS"]).then(function(api){
+			$scope.apis.user_details=api;
+		});
+		$scope.getApi($scope.apis_list["GET REPOSITORIES STARRED"]).then(function(api){
+			$scope.apis.repo_starred=api;
+			loadStarredLayout(api)
+		});
+	});
+
+}
+]);
+
+function loadStarredLayout(api){
+	//set html for first 4 repos
+	var html="<div class='row font-lat'>";
+	var column_count=0;
+	var showed_repos=0;
+	//get repos
+	$.each( api, function(key, val) {
+			if(column_count>=2) {html+="</div><div class='row font-lat'>";column_count=0;}
+			html+="<div class='col-md-6 p-0'><div class='mt-2 mx-2 p-3 border border-bottom-0 rounded-top' style='min-height:100px;'>";
+			html+="<div><a href='"+val.html_url+"' target='_blank'>"+val.full_name+"</a></div><div>"+val.description+"</div>";
+			html+="</div>";
+			html+="<div class='form-inline mx-2 mb-2 p-3 border border-top-0 rounded-bottom'>";
+			html+="<img class='grayscale mr-2' style='width:17px; height:auto;' src='img/star.png'/>"+val.stargazers_count;
+			html+="<img class='grayscale brightness ml-3 mr-2' style='width:20px; height:auto;' src='img/fork.png'/>"+val.forks_count;
+			html+="</div></div>";
+			column_count++;
+			showed_repos++;
+			if (showed_repos>=4) return false;
+		});
+	html+="</div>";
+	$("#sub-content").html(html);
+}
